@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculator</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+
+  <body>
+    <div class="calculator">
+      <!-- 履歴パネル -->
+      <div id="history-panel" class="history-panel">
+        <div class="history-header">
+          <span>履歴</span>
+          <button id="close-history">×</button>
+        </div>
+        <div id="history-list"></div>
+      </div>
+
+      <div class="display">
+        <button id="toggle-history" class="history-btn">☰</button>
+        <div id="history" class="history-text"></div>
+        <div id="result" class="result">0</div>
+      </div>
+
+      <!-- ボタンエリアの例 -->
+      <div class="buttons">
+        <button data-clear>C</button>
+        <button data-sqrt>√</button>
+        <button data-percent>%</button>
+        <button data-backspace>⌫</button>
+
+        <button data-num="7">7</button>
+        <button data-num="8">8</button>
+        <button data-num="9">9</button>
+        <button data-op="÷" class="op">÷</button>
+
+        <button data-num="4">4</button>
+        <button data-num="5">5</button>
+        <button data-num="6">6</button>
+        <button data-op="×" class="op">×</button>
+
+        <button data-num="1">1</button>
+        <button data-num="2">2</button>
+        <button data-num="3">3</button>
+        <button data-op="-" class="op">-</button>
+
+        <button data-num="0" class="zero">0</button>
+        <button data-dot>.</button>
+        <button data-op="+" class="op plus">+</button>
+
+        <button data-equal class="equal">=</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
