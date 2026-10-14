@@ -18,6 +18,13 @@ npm install
 ※ VS Codeで普通に開けます
 ※ 実務でも全員やります
 
+git rm -r --cached node_modules
+git commit -m "chore: node_modulesをGit管理から除外"
+git push
+
+解説：
+git rm -r --cached は「自分のパソコンにあるファイルは残したまま、Git/GitHubの追跡だけをやめる」という非常に便利で安全なコマンドです。
+
 ---
 
 ### 方法② メモ帳・Notion・付箋
