@@ -1,3 +1,8 @@
+/**
+ * 【四則演算実行クラス】（ドメイン層）
+ * 渡された2つの数値と演算子に基づき、Strategy（テーブル駆動）パターンで純粋な四則演算を実施するクラス
+ */
+
 import { Operation } from "../Operation";
 import { DivisionByZeroError } from "../DivisionByZeroError";
 

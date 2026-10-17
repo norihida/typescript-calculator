@@ -1,3 +1,8 @@
+/**
+ * 【旧ロジック互換アダプター】（移行用 / 互換層）
+ * 既存の単体テストとの互換性を保つため、Evaluator や NumberFormatter への委譲を行うラッパー関数群
+ */
+
 import { Evaluator } from "./domain/Evaluator";
 import { NumberFormatter } from "./domain/NumberFormatter";
 import { Operation } from "./Operation";

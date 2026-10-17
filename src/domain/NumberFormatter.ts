@@ -1,3 +1,8 @@
+/**
+ * 【数値表示整形クラス】（ドメイン層）
+ * 計算結果の数値を画面表示用文字列に整形し、桁数超過時の指数表記変換や末尾ゼロ削除を担うクラス
+ */
+
 export class NumberFormatter {
   private readonly maxDigits: number;
 

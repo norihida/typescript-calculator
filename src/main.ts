@@ -1,3 +1,8 @@
+/**
+ * 【アプリケーション・エントリーポイント】（結線・起動）
+ * DOM要素の取得、各クラスのインスタンス化、およびイベントリスナー（クリック・キーボード）のバインドを行う起点ファイル
+ */
+
 import { DomDisplay } from "./DomDisplay";
 import { Calculator } from "./Calculator";
 import { KeyMapper } from "./KeyMapper";

@@ -1,3 +1,8 @@
+/**
+ * 【入力マッパークラス】（UI層）
+ * 画面上のボタン要素やキーボード入力を解析し、アプリが解釈できる KeyToken に変換するクラス
+ */
+
 import { Operation } from "./Operation";
 import type { KeyToken } from "./KeyToken";
 

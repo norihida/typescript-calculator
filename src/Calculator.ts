@@ -1,3 +1,8 @@
+/**
+ * 【電卓アプリケーション制御クラス】（アプリケーション層）
+ * 電卓の頭脳として状態遷移（ステートマシン）を司り、入力解釈・計算指示・画面更新の連携を統括する中核クラス
+ */
+
 import type { IDisplay } from "./IDisplay";
 import { CalcState } from "./CalcState";
 import { Operation } from "./Operation";

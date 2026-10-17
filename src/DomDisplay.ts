@@ -1,3 +1,8 @@
+/**
+ * 【DOM描画クラス】（UI層）
+ * IDisplay を実装し、ブラウザのHTML要素に対して計算結果・エラー・数式を実際に反映するクラス
+ */
+
 import type { IDisplay } from "./IDisplay";
 
 export class DomDisplay implements IDisplay {
