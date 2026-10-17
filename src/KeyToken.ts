@@ -1,18 +1,4 @@
-export enum Operation {
-  Add = "+",
-  Subtract = "-",
-  Multiply = "×",
-  Divide = "÷",
-}
-
-export enum CalcState {
-  Ready,
-  InputtingFirst,
-  OperatorEntered,
-  InputtingSecond,
-  ResultShown,
-  Error,
-}
+import { Operation } from "./Operation";
 
 export type KeyToken =
   | { kind: "digit"; value: number }

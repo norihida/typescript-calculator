@@ -1,7 +1,7 @@
 import { Evaluator } from "./domain/Evaluator";
 import { NumberFormatter } from "./domain/NumberFormatter";
-import { Operation } from "./types";
-import { DivisionByZeroError } from "./errors";
+import { Operation } from "./Operation";
+import { DivisionByZeroError } from "./DivisionByZeroError";
 
 export type Operator = "+" | "-" | "×" | "÷";
 

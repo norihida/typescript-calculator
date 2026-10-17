@@ -1,70 +1,63 @@
-import { Operation, type KeyToken } from "./types";
+import { Operation } from "./Operation";
+import type { KeyToken } from "./KeyToken";
 
 export class KeyMapper {
-  // DOMボタンの dataset から KeyToken を判別する
-  public resolve(element: HTMLElement): KeyToken | null {
-    const dataset = element.dataset;
+  private readonly keyMap: Map<string, KeyToken> = new Map();
 
-    // 数字キー
-    if (dataset.num !== undefined) {
-      return { kind: "digit", value: Number(dataset.num) };
-    }
-
-    // 小数点
-    if (dataset.dot !== undefined) {
-      return { kind: "decimal" };
-    }
-
-    // イコール
-    if (dataset.equal !== undefined) {
-      return { kind: "equal" };
-    }
-
-    // クリア
-    if (dataset.clear !== undefined) {
-      return { kind: "clear" };
-    }
-
-    // 演算子キー
-    if (dataset.op !== undefined) {
-      const op = this.toOperation(dataset.op);
-      if (op) {
-        return { kind: "op", value: op };
-      }
-    }
-
-    // √（平方根）
-    if (dataset.sqrt !== undefined) {
-      return { kind: "sqrt" };
-    }
-
-    // %（パーセント）
-    if (dataset.percent !== undefined) {
-      return { kind: "percent" };
-    }
-
-    // ⌫（バックスペース）
-    if (dataset.backspace !== undefined) {
-      return { kind: "backspace" };
-    }
-
-    return null;
+  constructor() {
+    this.initKeyMap();
   }
 
-  private toOperation(opStr: string): Operation | null {
-    switch (opStr) {
-      case "+":
-        return Operation.Add;
-      case "-":
-        return Operation.Subtract;
-      case "×":
-      case "*":
-        return Operation.Multiply;
-      case "÷":
-      case "/":
-        return Operation.Divide;
-      default:
-        return null;
+  private initKeyMap(): void {
+    // 数字キー (0-9)
+    for (let i = 0; i <= 9; i++) {
+      this.keyMap.set(String(i), { kind: "digit", value: i });
     }
+    // 小数点・等号・クリア・特殊操作
+    this.keyMap.set(".", { kind: "decimal" });
+    this.keyMap.set("=", { kind: "equal" });
+    this.keyMap.set("C", { kind: "clear" });
+    this.keyMap.set("backspace", { kind: "backspace" });
+    this.keyMap.set("sqrt", { kind: "sqrt" });
+    this.keyMap.set("percent", { kind: "percent" });
+
+    // 演算子
+    this.keyMap.set("+", { kind: "op", value: Operation.Add });
+    this.keyMap.set("-", { kind: "op", value: Operation.Subtract });
+    this.keyMap.set("×", { kind: "op", value: Operation.Multiply });
+    this.keyMap.set("*", { kind: "op", value: Operation.Multiply });
+    this.keyMap.set("÷", { kind: "op", value: Operation.Divide });
+    this.keyMap.set("/", { kind: "op", value: Operation.Divide });
+  }
+
+  /**
+   * DOMイベントのターゲットから KeyToken を解決する
+   */
+  public resolve(target: EventTarget): KeyToken | null {
+    if (!(target instanceof HTMLElement)) return null;
+
+    const dataset = target.dataset;
+    const key =
+      dataset.num ??
+      dataset.op ??
+      (dataset.dot !== undefined ? "." : undefined) ??
+      (dataset.equal !== undefined ? "=" : undefined) ??
+      (dataset.clear !== undefined ? "C" : undefined) ??
+      (dataset.backspace !== undefined ? "backspace" : undefined) ??
+      (dataset.sqrt !== undefined ? "sqrt" : undefined) ??
+      (dataset.percent !== undefined ? "percent" : undefined);
+
+    if (!key) return null;
+    return this.keyMap.get(key) ?? null;
+  }
+
+  /**
+   * キーボードのキー文字列から KeyToken を解決する
+   */
+  public resolveKey(key: string): KeyToken | null {
+    if (key === "Enter") return this.keyMap.get("=") ?? null;
+    if (key === "Escape") return this.keyMap.get("C") ?? null;
+    if (key === "Backspace") return this.keyMap.get("backspace") ?? null;
+    return this.keyMap.get(key) ?? null;
   }
 }
