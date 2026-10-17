@@ -125,9 +125,10 @@ export class Calculator {
     }
   }
 
-  public handleEqual(): void {
+public handleEqual(): void {
     if (this.state === CalcState.Error) return;
 
+    // 1. 通常の計算: left, operator, buffer が揃っている場合
     if (this.state === CalcState.InputtingSecond && this.left !== null && this.operator !== null) {
       const a = this.left;
       const op = this.operator;
@@ -142,12 +143,20 @@ export class Calculator {
       this.display.render(resStr);
       this.state = CalcState.ResultShown;
 
-      // 計算式を「3 + 3 =」のように更新
       const formulaOnly = `${a} ${op} ${b} =`;
       const fullExpression = `${formulaOnly} ${resStr}`;
       this.updateFormula(formulaOnly);
 
       this.onCalculate?.(fullExpression, formulaOnly);
+      return;
+    }
+
+    // ★ 追加：状態遷移図「OperatorEntered -> equal (二項目が空→無視/同値) -> ResultShown」の対応
+    if (this.state === CalcState.OperatorEntered && this.left !== null) {
+      this.operator = null;
+      this.state = CalcState.ResultShown; // ResultShown に遷移
+      this.updateFormula(`${this.left} =`);
+      return;
     }
   }
 
