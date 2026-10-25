@@ -113,3 +113,24 @@ describe("【単体テスト】ドメイン層の検証", () => {
     });
   });
 });
+
+// ----------------------------------------------------------------
+  // 4. 追加機能・エッジケースのテスト
+  // ----------------------------------------------------------------
+  describe("追加機能・エッジケースの検証", () => {
+    it("Evaluator: 連続した四則演算が計算できること（左から順評価の検証）", () => {
+      const evaluator = new Evaluator();
+      // 2 + 3 = 5
+      const step1 = evaluator.compute(2, Operation.Add, 3);
+      expect(step1).toBe(5);
+      // 5 * 4 = 20
+      const step2 = evaluator.compute(step1, Operation.Multiply, 4);
+      expect(step2).toBe(20);
+    });
+
+    it("NumberFormatter: 負の数や小数の指数表記判定が正しく行われること", () => {
+      const formatter = new NumberFormatter(8);
+      expect(formatter.fits(-9999999)).toBe(true);  // 負の数でも8桁以内ならtrue
+      expect(formatter.fits(-100000000)).toBe(false); // 桁あふれはfalse
+    });
+  });
