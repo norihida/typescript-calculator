@@ -16,9 +16,9 @@ export class Calculator {
   private state: CalcState = CalcState.Ready;
   private left: number | null = null;
   private operator: Operation | null = null;
-  private formula: string = ""; // ★ 現在の計算式（数式）
-  private lastOperator: Operation | null = null; // ★ 直前の演算子
-  private lastOperand: number | null = null;      // ★ 直前の第2オペランド
+  private formula: string = "";
+  private lastOperator: Operation | null = null;
+  private lastOperand: number | null = null;
 
   public onCalculate?: (expression: string, formulaOnly: string) => void;
 
@@ -29,7 +29,6 @@ export class Calculator {
     private readonly buffer = new InputBuffer(Config.MAX_DIGITS)
   ) {}
 
-  // ★ switch文の代わりにハンドラマップでディスパッチ
   public handle(token: KeyToken): void {
     try {
       const actionMap: Record<KeyToken["kind"], () => void> = {
@@ -49,12 +48,12 @@ export class Calculator {
     }
   }
 
-  // --- クラス図で定義された公開メソッド群 ---
+  // --- クラス図準拠の公開操作メソッド群 ---
 
   public handleDigit(d: number): void {
     if (this.state === CalcState.Error || this.state === CalcState.ResultShown) {
       this.resetState();
-      this.updateFormula(""); // 結果表示後の新規数字入力時は式を消去
+      this.updateFormula("");
     }
 
     if (this.state === CalcState.Ready || this.state === CalcState.OperatorEntered) {
@@ -90,31 +89,33 @@ export class Calculator {
   public handleOperator(nextOp: Operation): void {
     if (this.state === CalcState.Error) return;
 
-    // 1. 演算子の押し替え（例: 1 + の後に - を押した）
+    // 1. 演算子の押し替え
     if (this.state === CalcState.OperatorEntered) {
       this.operator = nextOp;
       this.updateFormula(`${this.left} ${nextOp}`);
       return;
     }
 
-    // 2. 連続計算（例: 1 + 2 の後に + を押した → 3 + になる）
+    // 2. 連続計算（左から順評価：2 + 3 の後に × を押した等）
     if (this.state === CalcState.InputtingSecond && this.left !== null && this.operator !== null) {
       const right = this.buffer.toNumber();
-      const result = this.evaluator.compute(this.left, this.operator, right);
+      try {
+        const result = this.evaluator.compute(this.left, this.operator, right);
+        this.left = result;
+        this.operator = nextOp;
+        this.buffer.clear();
 
-      this.left = result;
-      this.operator = nextOp;
-      this.buffer.clear();
-
-      const resStr = this.formatter.formatForDisplay(result);
-      this.display.render(resStr);
-      // 計算式を「3 +」のように更新
-      this.updateFormula(`${resStr} ${nextOp}`);
-      this.state = CalcState.OperatorEntered;
+        const resStr = this.formatter.formatForDisplay(result);
+        this.display.render(resStr);
+        this.updateFormula(`${resStr} ${nextOp}`);
+        this.state = CalcState.OperatorEntered;
+      } catch {
+        this.toError(Config.ERROR_MESSAGE);
+      }
       return;
     }
 
-    // 3. 最初の演算子入力（例: 1 の後に + を押した → 1 + になる）
+    // 3. 最初の演算子入力
     if (this.state === CalcState.InputtingFirst || this.state === CalcState.Ready) {
       this.left = this.buffer.isEmpty() ? 0 : this.buffer.toNumber();
       this.operator = nextOp;
@@ -123,7 +124,7 @@ export class Calculator {
       return;
     }
 
-    // 4. 計算結果表示後に演算子入力（結果を引き継いで計算開始）
+    // 4. 計算結果表示後の演算子入力
     if (this.state === CalcState.ResultShown) {
       this.operator = nextOp;
       this.updateFormula(`${this.left} ${nextOp}`);
@@ -135,59 +136,52 @@ export class Calculator {
   public handleEqual(): void {
     if (this.state === CalcState.Error) return;
 
-    // 1. 通常の計算 (5 + 3 =)
+    // 1. 通常の計算: 5 + 3 =
     if (this.state === CalcState.InputtingSecond && this.left !== null && this.operator !== null) {
-      const a = this.left;
-      const op = this.operator;
-      const b = this.buffer.toNumber();
-
-      this.executeCalculation(a, op, b);
+      this.executeCalculation(this.left, this.operator, this.buffer.toNumber());
       return;
     }
 
-    // 2. 「同値」計算 (5 + =)
+    // 2. 同値計算: 5 + =
     if (this.state === CalcState.OperatorEntered && this.left !== null && this.operator !== null) {
-      const a = this.left;
-      const op = this.operator;
-      const b = this.left;
-
-      this.executeCalculation(a, op, b);
+      this.executeCalculation(this.left, this.operator, this.left);
       return;
     }
 
-    // 3. ★ リピート計算 (計算結果が出た後にさらに = を連打した場合)
+    // 3. リピート計算: 結果表示後に = を連打
     if (this.state === CalcState.ResultShown && this.left !== null && this.lastOperator !== null && this.lastOperand !== null) {
-      const a = this.left;
-      const op = this.lastOperator;
-      const b = this.lastOperand;
-
-      this.executeCalculation(a, op, b);
+      this.executeCalculation(this.left, this.lastOperator, this.lastOperand);
       return;
     }
   }
 
   private executeCalculation(a: number, op: Operation, b: number): void {
-    const result = this.evaluator.compute(a, op, b);
-    const resStr = this.formatter.formatForDisplay(result);
+    try {
+      const result = this.evaluator.compute(a, op, b);
+      const resStr = this.formatter.formatForDisplay(result);
 
-    this.left = result;
-    this.lastOperator = op;   // ★ 直前の演算子を保持
-    this.lastOperand = b;      // ★ 直前の数値を保持
-    this.operator = null;
-    this.buffer.clear();
-    this.display.render(resStr);
-    this.state = CalcState.ResultShown;
+      this.left = result;
+      this.lastOperator = op;
+      this.lastOperand = b;
+      this.operator = null;
+      this.buffer.clear();
+      this.display.render(resStr);
+      this.state = CalcState.ResultShown;
 
-    const formulaOnly = `${a} ${op} ${b} =`;
-    const fullExpression = `${formulaOnly} ${resStr}`;
-    this.updateFormula(formulaOnly);
-    this.onCalculate?.(fullExpression, formulaOnly);
+      const formulaOnly = `${a} ${op} ${b} =`;
+      const fullExpression = `${formulaOnly} ${resStr}`;
+      this.updateFormula(formulaOnly);
+      this.onCalculate?.(fullExpression, formulaOnly);
+    } catch {
+      // ★ 0除算例外をここで確実にキャッチして Error 状態へ遷移
+      this.toError(Config.ERROR_MESSAGE);
+    }
   }
 
   public handleClear(): void {
     this.resetState();
     this.display.render("0");
-    this.updateFormula(""); // ★ 指摘①：「C」で計算式もクリアする
+    this.updateFormula("");
   }
 
   public handleAllClear(): void {
@@ -234,7 +228,7 @@ export class Calculator {
     this.display.render(resStr);
   }
 
-  // --- ヘルパー ---
+  // --- ヘルパーメソッド ---
 
   private updateFormula(formula: string): void {
     this.formula = formula;
@@ -244,6 +238,8 @@ export class Calculator {
   private resetState(): void {
     this.left = null;
     this.operator = null;
+    this.lastOperator = null;
+    this.lastOperand = null;
     this.buffer.clear();
     this.state = CalcState.Ready;
   }
