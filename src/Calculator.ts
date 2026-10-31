@@ -48,16 +48,19 @@ export class Calculator {
     }
   }
 
-  // --- クラス図準拠の公開操作メソッド群 ---
-
   public handleDigit(d: number): void {
-    if (this.state === CalcState.Error || this.state === CalcState.ResultShown) {
+    // ★ No.34対応：エラー中は数字入力を受け付けない（Cでのみ復帰）
+    if (this.state === CalcState.Error) return;
+
+    if (this.state === CalcState.ResultShown) {
       this.resetState();
       this.updateFormula("");
     }
 
     if (this.state === CalcState.Ready || this.state === CalcState.OperatorEntered) {
-      this.buffer.clear();
+      if (this.buffer.getValue() !== "-") {
+        this.buffer.clear();
+      }
       this.state =
         this.state === CalcState.OperatorEntered
           ? CalcState.InputtingSecond
@@ -69,13 +72,17 @@ export class Calculator {
   }
 
   public handleDecimalPoint(): void {
-    if (this.state === CalcState.Error || this.state === CalcState.ResultShown) {
+    if (this.state === CalcState.Error) return;
+
+    if (this.state === CalcState.ResultShown) {
       this.resetState();
       this.updateFormula("");
     }
 
     if (this.state === CalcState.Ready || this.state === CalcState.OperatorEntered) {
-      this.buffer.clear();
+      if (this.buffer.getValue() !== "-") {
+        this.buffer.clear();
+      }
       this.state =
         this.state === CalcState.OperatorEntered
           ? CalcState.InputtingSecond
@@ -89,6 +96,26 @@ export class Calculator {
   public handleOperator(nextOp: Operation): void {
     if (this.state === CalcState.Error) return;
 
+    // ★ No.14 / No.54対応：数値未入力時に「-」が押された場合は負の符号入力とする
+    if (nextOp === Operation.Subtract) {
+      if (this.state === CalcState.Ready && this.buffer.isEmpty()) {
+        this.buffer.pushMinus();
+        this.display.render("-");
+        this.updateFormula("0-");
+        return;
+      }
+      // 連続で「-」が押された場合も「-」を維持
+      if (this.buffer.getValue() === "-") {
+        return;
+      }
+    }
+
+      // ★ 追加：画面が「-」の状態で別の演算子（+、×、÷）が押されたらマイナス入力を取り消す
+    if (this.buffer.getValue() === "-") {
+      this.buffer.clear();
+      this.display.render("0");
+    }
+
     // 1. 演算子の押し替え
     if (this.state === CalcState.OperatorEntered) {
       this.operator = nextOp;
@@ -96,7 +123,7 @@ export class Calculator {
       return;
     }
 
-    // 2. 連続計算（左から順評価：2 + 3 の後に × を押した等）
+    // 2. 連続計算
     if (this.state === CalcState.InputtingSecond && this.left !== null && this.operator !== null) {
       const right = this.buffer.toNumber();
       try {
@@ -136,19 +163,16 @@ export class Calculator {
   public handleEqual(): void {
     if (this.state === CalcState.Error) return;
 
-    // 1. 通常の計算: 5 + 3 =
     if (this.state === CalcState.InputtingSecond && this.left !== null && this.operator !== null) {
       this.executeCalculation(this.left, this.operator, this.buffer.toNumber());
       return;
     }
 
-    // 2. 同値計算: 5 + =
     if (this.state === CalcState.OperatorEntered && this.left !== null && this.operator !== null) {
       this.executeCalculation(this.left, this.operator, this.left);
       return;
     }
 
-    // 3. リピート計算: 結果表示後に = を連打
     if (this.state === CalcState.ResultShown && this.left !== null && this.lastOperator !== null && this.lastOperand !== null) {
       this.executeCalculation(this.left, this.lastOperator, this.lastOperand);
       return;
@@ -173,7 +197,6 @@ export class Calculator {
       this.updateFormula(formulaOnly);
       this.onCalculate?.(fullExpression, formulaOnly);
     } catch {
-      // ★ 0除算例外をここで確実にキャッチして Error 状態へ遷移
       this.toError(Config.ERROR_MESSAGE);
     }
   }
@@ -198,10 +221,14 @@ export class Calculator {
 
   public handleSqrt(): void {
     if (this.state === CalcState.Error) return;
+
+    // ★ No.29対応：演算子入力直後（例:「4」「-」）は無視する
+    if (this.state === CalcState.OperatorEntered) return;
+
     const currentVal = !this.buffer.isEmpty() ? this.buffer.toNumber() : this.left ?? 0;
 
+    // ★ No.29対応：負の数の平方根は「反応しない（無視）」
     if (currentVal < 0) {
-      this.toError(Config.ERROR_MESSAGE);
       return;
     }
 
@@ -220,6 +247,8 @@ export class Calculator {
 
   public handlePercent(): void {
     if (this.state === CalcState.Error) return;
+    if (this.state === CalcState.OperatorEntered) return;
+
     const currentVal = !this.buffer.isEmpty() ? this.buffer.toNumber() : this.left ?? 0;
     const result = currentVal / 100;
     const resStr = this.formatter.formatForDisplay(result);
@@ -227,8 +256,6 @@ export class Calculator {
     this.buffer.setValue(resStr);
     this.display.render(resStr);
   }
-
-  // --- ヘルパーメソッド ---
 
   private updateFormula(formula: string): void {
     this.formula = formula;

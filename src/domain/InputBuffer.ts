@@ -13,6 +13,8 @@ export class InputBuffer {
 
     if (this.value === "0") {
       this.value = String(d);
+    } else if (this.value === "-0") {
+      this.value = "-" + String(d);
     } else {
       this.value += String(d);
     }
@@ -21,18 +23,31 @@ export class InputBuffer {
   public pushDecimal(): void {
     if (this.digitCount() >= this.maxDigits) return;
 
-    if (this.value === "") {
+    if (this.value === "" || this.value === "0") {
       this.value = "0.";
+    } else if (this.value === "-") {
+      this.value = "-0.";
     } else if (!this.value.includes(".")) {
       this.value += ".";
     }
+  }
+
+  // ★ 負の符号をセット（No.14, No.54 対応）
+  public pushMinus(): void {
+    if (this.value === "") {
+      this.value = "-";
+    }
+  }
+
+  public backspace(): void {
+    this.value = this.value.slice(0, -1);
   }
 
   public clear(): void {
     this.value = "";
   }
 
-  public set(val: string): void {
+  public setValue(val: string): void {
     this.value = val;
   }
 
@@ -41,25 +56,15 @@ export class InputBuffer {
   }
 
   public toNumber(): number {
-    return Number(this.value || 0);
+    if (this.value === "" || this.value === "-") return 0;
+    return Number(this.value);
   }
 
   public isEmpty(): boolean {
-    return this.value.length === 0;
+    return this.value.length === 0 || this.value === "-";
   }
 
   public digitCount(): number {
     return this.value.replace(/[.\-]/g, "").length;
   }
-
-  // 末尾1文字を削除
-  public backspace(): void {
-    this.value = this.value.slice(0, -1);
-  }
-
-  // 特定の文字列（パーセント計算後など）を直接セット
-  public setValue(val: string): void {
-    this.value = val;
-  }
 }
-
