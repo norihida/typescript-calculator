@@ -10,9 +10,6 @@ export class NumberFormatter {
     this.maxDigits = maxDigits;
   }
 
-  /**
-   * 数値が通常の桁数制限（8桁）に収まるかどうかを判定する
-   */
   public fits(n: number): boolean {
     if (!Number.isFinite(n)) return false;
     const s = n.toString();
@@ -23,16 +20,24 @@ export class NumberFormatter {
   public formatForDisplay(n: number): string {
     if (!Number.isFinite(n)) return "Error";
 
-    // fits で収まらない場合は指数表記
-    if (!this.fits(n)) {
-      return n.toExponential(3).replace(/\.0+e/, "e");
+    // 8桁以内で通常表記できる場合
+    if (this.fits(n)) {
+      const s = n.toString();
+      if (s.includes(".")) {
+        return s.replace(/\.?0+$/, "");
+      }
+      return s;
     }
 
-    const s = n.toString();
-    if (s.includes(".")) {
-      return s.replace(/\.?0+$/, "");
-    }
+    // ★ 小数点以下をすべて切り捨てて整数部のみにする（例: 333333330 -> 3e+8）
+    const sign = n < 0 ? "-" : "";
+    const absN = Math.abs(n);
+    const expStr = absN.toExponential(); // 例: "3.3333333e+8"
+    const [mantissaStr, expPart] = expStr.split("e");
 
-    return s;
+    // 小数点より前の「整数部分だけ」を取り出す（例: "3.3333" -> "3"）
+    const integerPart = mantissaStr.split(".")[0];
+
+    return `${sign}${integerPart}e${expPart}`;
   }
 }

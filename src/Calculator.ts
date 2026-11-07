@@ -29,6 +29,12 @@ export class Calculator {
     private readonly buffer = new InputBuffer(Config.MAX_DIGITS)
   ) {}
 
+
+  // 現在の電卓の状態を取得する（単体テスト・検証用）
+  public getState(): CalcState {
+    return this.state;
+  }
+
   public handle(token: KeyToken): void {
     try {
       const actionMap: Record<KeyToken["kind"], () => void> = {
@@ -96,7 +102,7 @@ export class Calculator {
   public handleOperator(nextOp: Operation): void {
     if (this.state === CalcState.Error) return;
 
-    // ★ No.14 / No.54対応：数値未入力時に「-」が押された場合は負の符号入力とする
+    // 数値未入力時に「-」が押された場合は負の符号入力とする
     if (nextOp === Operation.Subtract) {
       if (this.state === CalcState.Ready && this.buffer.isEmpty()) {
         this.buffer.pushMinus();
@@ -110,7 +116,7 @@ export class Calculator {
       }
     }
 
-      // ★ 追加：画面が「-」の状態で別の演算子（+、×、÷）が押されたらマイナス入力を取り消す
+      // 画面が「-」の状態で別の演算子（+、×、÷）が押されたらマイナス入力を取り消す
     if (this.buffer.getValue() === "-") {
       this.buffer.clear();
       this.display.render("0");
@@ -271,9 +277,15 @@ export class Calculator {
     this.state = CalcState.Ready;
   }
 
-  private toError(message: string): void {
-    this.state = CalcState.Error;
-    this.resetState();
+private toError(message: string): void {
+    // resetState() を呼ばず、エラー状態（CalcState.Error）をしっかり維持する
+    this.left = null;
+    this.operator = null;
+    this.lastOperator = null;
+    this.lastOperand = null;
+    this.buffer.clear();
+    this.state = CalcState.Error; // ★ ここで確実に Error 状態になる
+
     this.updateFormula("");
     this.display.renderError(message);
   }
