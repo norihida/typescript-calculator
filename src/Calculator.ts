@@ -217,12 +217,21 @@ export class Calculator {
     this.handleClear();
   }
 
-  public handleBackspace(): void {
+public handleBackspace(): void {
     if (this.state === CalcState.ResultShown || this.state === CalcState.Error) {
       return;
     }
     this.buffer.backspace();
-    this.display.render(this.buffer.getValue() || "0");
+
+    // ★ バッファが空（または負符号が消えた）なら、計算式エリアもクリアして「0」にする
+    if (this.buffer.isEmpty() || this.buffer.getValue() === "") {
+      this.buffer.clear();
+      this.display.render("0");
+      this.updateFormula("");
+      return;
+    }
+
+    this.display.render(this.buffer.getValue());
   }
 
   public handleSqrt(): void {
