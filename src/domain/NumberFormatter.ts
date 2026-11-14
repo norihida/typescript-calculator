@@ -12,32 +12,31 @@ export class NumberFormatter {
 
   public fits(n: number): boolean {
     if (!Number.isFinite(n)) return false;
-    const s = n.toString();
-    const count = s.replace(/[.\-]/g, "").length;
-    return count <= this.maxDigits && Math.abs(n) < 1e8 && (n === 0 || Math.abs(n) >= 1e-7);
+    // 指数表記にするのは「1億以上」または「極小値（0を除く1e-7未満）」のとき
+    return Math.abs(n) < 1e8 && (n === 0 || Math.abs(n) >= 1e-7);
   }
 
   public formatForDisplay(n: number): string {
     if (!Number.isFinite(n)) return "Error";
 
-    // 8桁以内で通常表記できる場合
-    if (this.fits(n)) {
-      const s = n.toString();
-      if (s.includes(".")) {
-        return s.replace(/\.?0+$/, "");
-      }
-      return s;
+    // 1. 指数表記が必要な場合（1億以上、または極小値）
+    if (!this.fits(n)) {
+      const sign = n < 0 ? "-" : "";
+      const absN = Math.abs(n);
+      const expStr = absN.toExponential();
+      const [mantissaStr, expPart] = expStr.split("e");
+      const integerPart = mantissaStr.split(".")[0];
+      return `${sign}${integerPart}e${expPart}`;
     }
 
-    // ★ 小数点以下をすべて切り捨てて整数部のみにする（例: 333333330 -> 3e+8）
-    const sign = n < 0 ? "-" : "";
-    const absN = Math.abs(n);
-    const expStr = absN.toExponential(); // 例: "3.3333333e+8"
-    const [mantissaStr, expPart] = expStr.split("e");
+    // 2. 通常表示の場合（1 ÷ 3 などの割り切れない小数は全体で8桁に丸める）
+    let s = parseFloat(n.toPrecision(this.maxDigits)).toString();
 
-    // 小数点より前の「整数部分だけ」を取り出す（例: "3.3333" -> "3"）
-    const integerPart = mantissaStr.split(".")[0];
+    // 末尾の不要なゼロと小数点を削除
+    if (s.includes(".")) {
+      s = s.replace(/\.?0+$/, "");
+    }
 
-    return `${sign}${integerPart}e${expPart}`;
+    return s;
   }
 }
