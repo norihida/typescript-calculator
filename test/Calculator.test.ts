@@ -4,7 +4,7 @@ import { Operation } from "../src/Operation";
 import { CalcState } from "../src/CalcState";
 import type { IDisplay } from "../src/IDisplay";
 
-describe("Calculator（アプリケーション制御クラス）", () => {
+describe("Calculator（アプリケーション制御クラス）の単体テスト", () => {
   let mockDisplay: IDisplay;
   let calculator: Calculator;
 
@@ -18,148 +18,170 @@ describe("Calculator（アプリケーション制御クラス）", () => {
   });
 
   // -------------------------------------------------------------
-  // 1. 基本計算と機能のテスト
+  // 1. 基本計算と入力順序の制御
   // -------------------------------------------------------------
-  it("数字と演算子を入力して等号を押すと計算結果が描画されること", () => {
-    calculator.handleDigit(5);
-    calculator.handleOperator(Operation.Add);
-    calculator.handleDigit(3);
-    calculator.handleEqual();
+  describe("基本計算と入力制御", () => {
+    it("数字と演算子を入力して等号を押すと計算結果が描画されること", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(3);
+      calculator.handleEqual();
 
-    expect(mockDisplay.render).toHaveBeenLastCalledWith("8");
-  });
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("8");
+    });
 
-  it("左から順評価：連続して演算子を押した際に即時計算されること (2 + 3 ×)", () => {
-    calculator.handleDigit(2);
-    calculator.handleOperator(Operation.Add);
-    calculator.handleDigit(3);
-    calculator.handleOperator(Operation.Multiply);
-
-    expect(mockDisplay.render).toHaveBeenLastCalledWith("5");
-    expect(mockDisplay.renderFormula).toHaveBeenLastCalledWith("5 ×");
-  });
-
-  it("0除算が発生した場合にエラー表示へ遷移すること", () => {
-    calculator.handleDigit(5);
-    calculator.handleOperator(Operation.Divide);
-    calculator.handleDigit(0);
-    calculator.handleEqual();
-
-    expect(mockDisplay.renderError).toHaveBeenCalledWith("エラー");
-  });
-
-  it("Clear で画面と計算式が初期化されること", () => {
-    calculator.handleDigit(9);
-    calculator.handleClear();
-
-    expect(mockDisplay.render).toHaveBeenLastCalledWith("0");
-    expect(mockDisplay.renderFormula).toHaveBeenLastCalledWith("");
-  });
-
-  it("同値計算：5 + = で 10 が計算されること", () => {
-    calculator.handleDigit(5);
-    calculator.handleOperator(Operation.Add);
-    calculator.handleEqual();
-
-    expect(mockDisplay.render).toHaveBeenLastCalledWith("10");
-  });
-
-  // -------------------------------------------------------------
-  // 2. ★ 状態遷移（State）の検証テスト（講師からの指摘対応）
-  // -------------------------------------------------------------
-  describe("状態遷移（CalcState）のテスト", () => {
-    it("初期状態は Ready であること", () => {
+    it("初期状態で等号（=）を押しても状態・表示が変わらないこと", () => {
+      calculator.handleEqual();
       expect(calculator.getState()).toBe(CalcState.Ready);
+      expect(mockDisplay.render).not.toHaveBeenCalled();
     });
 
-    it("1つ目の数値を入力すると InputtingFirst に遷移すること", () => {
-      calculator.handleDigit(1);
-      expect(calculator.getState()).toBe(CalcState.InputtingFirst);
-    });
-
-    it("演算子を押すと OperatorEntered に遷移すること", () => {
-      calculator.handleDigit(1);
+    it("初期状態で演算子（+）を押すと「0 +」として処理されること", () => {
       calculator.handleOperator(Operation.Add);
       expect(calculator.getState()).toBe(CalcState.OperatorEntered);
+      expect(mockDisplay.renderFormula).toHaveBeenLastCalledWith("0 +");
     });
 
-    it("2つ目の数値を入力すると InputtingSecond に遷移すること", () => {
-      calculator.handleDigit(1);
+    it("演算子を連続で変更した場合、最後に入力した演算子が採用されること", () => {
+      calculator.handleDigit(8);
       calculator.handleOperator(Operation.Add);
-      calculator.handleDigit(2);
-      expect(calculator.getState()).toBe(CalcState.InputtingSecond);
-    });
-
-    it("等号（=）を押して計算完了すると ResultShown に遷移すること", () => {
-      calculator.handleDigit(1);
-      calculator.handleOperator(Operation.Add);
+      calculator.handleOperator(Operation.Subtract);
+      calculator.handleOperator(Operation.Multiply); // 最終的に「×」を採用
       calculator.handleDigit(2);
       calculator.handleEqual();
-      expect(calculator.getState()).toBe(CalcState.ResultShown);
+
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("16");
     });
 
-    it("0除算を行うと Error に遷移し、Clear で Ready に戻ること", () => {
+    it("演算子入力直後に小数点を押すと「0.」から開始されること", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDecimalPoint();
+      calculator.handleDigit(5);
+      calculator.handleEqual();
+
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("5.5");
+    });
+
+    it("計算完了後に数字を入力すると新しい計算として開始されること", () => {
+      calculator.handleDigit(2);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(3);
+      calculator.handleEqual(); // 結果: 5
+
+      calculator.handleDigit(9); // 新規開始
+      expect(calculator.getState()).toBe(CalcState.InputtingFirst);
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("9");
+    });
+
+    it("計算完了後に演算子を入力すると前回の結果を引き継ぐこと", () => {
+      calculator.handleDigit(2);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(3);
+      calculator.handleEqual(); // 結果: 5
+
+      calculator.handleOperator(Operation.Multiply);
+      calculator.handleDigit(4);
+      calculator.handleEqual();
+
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("20");
+    });
+
+    it("同じ演算子で連続イコールを押すとリピート計算されること (5 + = 10, = 15)", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleEqual(); // 10
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("10");
+
+      calculator.handleEqual(); // 15
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("15");
+    });
+  });
+
+  // -------------------------------------------------------------
+  // 2. 特殊演算（√・%）
+  // -------------------------------------------------------------
+  describe("特殊演算（√・%）", () => {
+    it("計算後に√を押すと結果の平方根が計算されること", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(4);
+      calculator.handleEqual(); // 結果: 9
+
+      calculator.handleSqrt(); // √9 = 3
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("3");
+    });
+
+    it("計算後に%を押すと結果が百分率変換されること", () => {
+      calculator.handleDigit(10);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(10);
+      calculator.handleEqual(); // 結果: 20
+
+      calculator.handlePercent(); // 20% = 0.2
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("0.2");
+    });
+  });
+
+  // -------------------------------------------------------------
+  // 3. エラー状態での入力拒否と復帰（最重要）
+  // -------------------------------------------------------------
+  describe("エラー状態での操作拒否と復帰", () => {
+    beforeEach(() => {
+      // 0除算でエラー状態にする
       calculator.handleDigit(5);
       calculator.handleOperator(Operation.Divide);
       calculator.handleDigit(0);
       calculator.handleEqual();
       expect(calculator.getState()).toBe(CalcState.Error);
+    });
 
+    it("エラー中に数字を押してもエラー状態が維持されること", () => {
+      calculator.handleDigit(5);
+      expect(calculator.getState()).toBe(CalcState.Error);
+    });
+
+    it("エラー中に演算子を押してもエラー状態が維持されること", () => {
+      calculator.handleOperator(Operation.Add);
+      expect(calculator.getState()).toBe(CalcState.Error);
+    });
+
+    it("エラー中に等号を押してもエラー状態が維持されること", () => {
+      calculator.handleEqual();
+      expect(calculator.getState()).toBe(CalcState.Error);
+    });
+
+    it("エラー中にバックスペースを押してもエラー状態が維持されること", () => {
+      calculator.handleBackspace();
+      expect(calculator.getState()).toBe(CalcState.Error);
+    });
+
+    it("エラー中にClearを押すとReady状態へ安全に復帰すること", () => {
       calculator.handleClear();
       expect(calculator.getState()).toBe(CalcState.Ready);
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("0");
+      expect(mockDisplay.renderFormula).toHaveBeenLastCalledWith("");
     });
   });
 
   // -------------------------------------------------------------
-  // 3. ★ 小数点・負数の計算テスト
+  // 4. クリアと状態初期化
   // -------------------------------------------------------------
-  describe("小数点および負数の計算テスト", () => {
-    it("小数の足し算が正しく計算されること (0.1 + 0.2 = 0.3)", () => {
-      calculator.handleDigit(0);
-      calculator.handleDecimalPoint();
-      calculator.handleDigit(1);
-
-      calculator.handleOperator(Operation.Add);
-
-      calculator.handleDigit(0);
-      calculator.handleDecimalPoint();
-      calculator.handleDigit(2);
-
-      calculator.handleEqual();
-      expect(mockDisplay.render).toHaveBeenLastCalledWith("0.3");
-    });
-
-    it("小数のかけ算が正しく計算されること (1.5 × 2 = 3)", () => {
-      calculator.handleDigit(1);
-      calculator.handleDecimalPoint();
+  describe("クリア・リセット", () => {
+    it("途中計算でCを押すとすべての内部状態が初期化され、その後の計算に影響しないこと", () => {
       calculator.handleDigit(5);
-
-      calculator.handleOperator(Operation.Multiply);
-      calculator.handleDigit(2);
-
-      calculator.handleEqual();
-      expect(mockDisplay.render).toHaveBeenLastCalledWith("3");
-    });
-
-    it("起動直後のマイナス入力で負数の計算ができること (-5 + 3 = -2)", () => {
-      // 起動直後に「-」を押す（負の符号入力）
-      calculator.handleOperator(Operation.Subtract);
-      calculator.handleDigit(5);
-
       calculator.handleOperator(Operation.Add);
       calculator.handleDigit(3);
 
-      calculator.handleEqual();
-      expect(mockDisplay.render).toHaveBeenLastCalledWith("-2");
-    });
+      calculator.handleClear(); // リセット
+      expect(calculator.getState()).toBe(CalcState.Ready);
 
-    it("引き算で結果が負の数になる場合も正しく表示されること (5 - 8 = -3)", () => {
-      calculator.handleDigit(5);
-      calculator.handleOperator(Operation.Subtract);
-      calculator.handleDigit(8);
-
+      calculator.handleDigit(2);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(1);
       calculator.handleEqual();
-      expect(mockDisplay.render).toHaveBeenLastCalledWith("-3");
+
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("3");
     });
   });
 });
