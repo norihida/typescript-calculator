@@ -18,7 +18,66 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
   });
 
   // -------------------------------------------------------------
-  // 1. 基本計算と入力順序の制御
+  // 1. ★ 状態遷移（CalcState）の完全網羅テスト（講師からの指摘対応）
+  // -------------------------------------------------------------
+  describe("状態遷移（CalcState）の網羅テスト", () => {
+    it("初期状態は Ready であること", () => {
+      expect(calculator.getState()).toBe(CalcState.Ready);
+    });
+
+    it("1つ目の数値を入力すると InputtingFirst に遷移すること", () => {
+      calculator.handleDigit(1);
+      expect(calculator.getState()).toBe(CalcState.InputtingFirst);
+    });
+
+    it("演算子を押すと OperatorEntered に遷移すること", () => {
+      calculator.handleDigit(1);
+      calculator.handleOperator(Operation.Add);
+      expect(calculator.getState()).toBe(CalcState.OperatorEntered);
+    });
+
+    it("★ 2つ目の数値を入力すると InputtingSecond に遷移すること", () => {
+      calculator.handleDigit(1);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(2); // 2項目目を入力
+      expect(calculator.getState()).toBe(CalcState.InputtingSecond);
+    });
+
+    it("★ 通常計算：等号（=）を押して計算完了すると ResultShown に遷移すること", () => {
+      calculator.handleDigit(1);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(2);
+      calculator.handleEqual(); // 計算実行
+      expect(calculator.getState()).toBe(CalcState.ResultShown);
+    });
+
+    it("★ 同値計算：演算子の直後に等号を押した場合も ResultShown に遷移すること", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleEqual(); // 5 + 5 = 10
+      expect(calculator.getState()).toBe(CalcState.ResultShown);
+    });
+
+    it("★ 平方根（√）を計算した直後も ResultShown に遷移すること", () => {
+      calculator.handleDigit(9);
+      calculator.handleSqrt(); // √9 = 3
+      expect(calculator.getState()).toBe(CalcState.ResultShown);
+    });
+
+    it("0除算を行うと Error に遷移し、Clear で Ready に戻ること", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Divide);
+      calculator.handleDigit(0);
+      calculator.handleEqual();
+      expect(calculator.getState()).toBe(CalcState.Error);
+
+      calculator.handleClear();
+      expect(calculator.getState()).toBe(CalcState.Ready);
+    });
+  });
+
+  // -------------------------------------------------------------
+  // 2. 基本計算と入力順序の制御
   // -------------------------------------------------------------
   describe("基本計算と入力制御", () => {
     it("数字と演算子を入力して等号を押すと計算結果が描画されること", () => {
@@ -46,7 +105,7 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handleDigit(8);
       calculator.handleOperator(Operation.Add);
       calculator.handleOperator(Operation.Subtract);
-      calculator.handleOperator(Operation.Multiply); // 最終的に「×」を採用
+      calculator.handleOperator(Operation.Multiply);
       calculator.handleDigit(2);
       calculator.handleEqual();
 
@@ -99,7 +158,7 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
   });
 
   // -------------------------------------------------------------
-  // 2. 特殊演算（√・%）
+  // 3. 特殊演算（√・%）
   // -------------------------------------------------------------
   describe("特殊演算（√・%）", () => {
     it("計算後に√を押すと結果の平方根が計算されること", () => {
@@ -124,11 +183,10 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
   });
 
   // -------------------------------------------------------------
-  // 3. エラー状態での入力拒否と復帰（最重要）
+  // 4. エラー状態での入力拒否と復帰
   // -------------------------------------------------------------
   describe("エラー状態での操作拒否と復帰", () => {
     beforeEach(() => {
-      // 0除算でエラー状態にする
       calculator.handleDigit(5);
       calculator.handleOperator(Operation.Divide);
       calculator.handleDigit(0);
@@ -165,7 +223,7 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
   });
 
   // -------------------------------------------------------------
-  // 4. クリアと状態初期化
+  // 5. クリアと状態初期化
   // -------------------------------------------------------------
   describe("クリア・リセット", () => {
     it("途中計算でCを押すとすべての内部状態が初期化され、その後の計算に影響しないこと", () => {
@@ -173,7 +231,7 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handleOperator(Operation.Add);
       calculator.handleDigit(3);
 
-      calculator.handleClear(); // リセット
+      calculator.handleClear();
       expect(calculator.getState()).toBe(CalcState.Ready);
 
       calculator.handleDigit(2);
