@@ -237,7 +237,7 @@ export class Calculator {
     this.display.render(resStr);
   }
 
-  public handlePercent(): void {
+    public handlePercent(): void {
     if (this.state === CalcState.Error) return;
     if (this.state === CalcState.OperatorEntered) return;
 
@@ -245,7 +245,13 @@ export class Calculator {
     const result = currentVal / 100;
     const resStr = this.formatter.formatForDisplay(result);
 
-    this.buffer.setValue(resStr);
+    // ★ 追加：計算結果表示中（ResultShown）の場合は、内部の left も更新して次の計算に備える
+    if (this.state === CalcState.ResultShown) {
+      this.left = result;
+    } else {
+      this.buffer.setValue(resStr);
+    }
+
     this.display.render(resStr);
   }
 
