@@ -27,8 +27,17 @@ const mapper = new KeyMapper();
 display.render("0");
 display.renderFormula("");
 
-// --- 履歴リスト管理 ---
-let histories: string[] = JSON.parse(localStorage.getItem("calc_history") || "[]");
+// --- 履歴機能（不正なデータがあってもクラッシュしないよう保護） ---
+let histories: string[] = [];
+try {
+  const saved = localStorage.getItem("calc_history");
+  const parsed = saved ? JSON.parse(saved) : [];
+  if (Array.isArray(parsed)) {
+    histories = parsed.filter((item): item is string => typeof item === "string");
+  }
+} catch {
+  histories = []; // 不正なJSONの場合は安全に空配列にフォールバック
+}
 
 function renderHistoryList() {
   if (!historyList) return;

@@ -9,6 +9,7 @@ npm run build
 完成後・提出用
 
 npm run test
+npx vitest run --reporter=verbose
 単体テスト
 npm run test:ui
 GUI でテスト
