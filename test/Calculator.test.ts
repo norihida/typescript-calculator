@@ -182,6 +182,23 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handlePercent();
       expect(mockDisplay.render).toHaveBeenLastCalledWith("0.2");
     });
+
+    it("計算結果に対して%を押した後、続けて四則演算ができること (20 % -> 0.2 + 4 = 4.2)", () => {
+      calculator.handleDigit(1);
+      calculator.handleDigit(0);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(1);
+      calculator.handleDigit(0);
+      calculator.handleEqual(); // 結果: 20
+
+      calculator.handlePercent(); // 0.2
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("0.2");
+
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(4);
+      calculator.handleEqual(); // 0.2 + 4 = 4.2
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("4.2");
+    });
   });
 
   // -------------------------------------------------------------
