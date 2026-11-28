@@ -2,7 +2,6 @@
  * 【電卓アプリケーション制御クラス】（アプリケーション層）
  * 電卓の頭脳として状態遷移（ステートマシン）を司り、入力解釈・計算指示・画面更新の連携を統括する中核クラス
  */
-
 import type { IDisplay } from "./IDisplay";
 import { CalcState } from "./CalcState";
 import { Operation } from "./Operation";
@@ -17,8 +16,6 @@ export class Calculator {
   private left: number | null = null;
   private operator: Operation | null = null;
   private formula: string = "";
-  private lastOperator: Operation | null = null;
-  private lastOperand: number | null = null;
 
   public onCalculate?: (expression: string, formulaOnly: string) => void;
 
@@ -29,8 +26,6 @@ export class Calculator {
     private readonly buffer = new InputBuffer(Config.MAX_DIGITS)
   ) {}
 
-
-  // 現在の電卓の状態を取得する（単体テスト・検証用）
   public getState(): CalcState {
     return this.state;
   }
@@ -55,7 +50,6 @@ export class Calculator {
   }
 
   public handleDigit(d: number): void {
-    // ★ No.34対応：エラー中は数字入力を受け付けない（Cでのみ復帰）
     if (this.state === CalcState.Error) return;
 
     if (this.state === CalcState.ResultShown) {
@@ -102,7 +96,7 @@ export class Calculator {
   public handleOperator(nextOp: Operation): void {
     if (this.state === CalcState.Error) return;
 
-    // 数値未入力時に「-」が押された場合は負の符号入力とする
+    // 負数入力モード
     if (nextOp === Operation.Subtract) {
       if (this.state === CalcState.Ready && this.buffer.isEmpty()) {
         this.buffer.pushMinus();
@@ -110,13 +104,12 @@ export class Calculator {
         this.updateFormula("0-");
         return;
       }
-      // 連続で「-」が押された場合も「-」を維持
       if (this.buffer.getValue() === "-") {
         return;
       }
     }
 
-      // 画面が「-」の状態で別の演算子（+、×、÷）が押されたらマイナス入力を取り消す
+    // 「-」入力中に別の演算子が押されたらキャンセルして「0」に戻す
     if (this.buffer.getValue() === "-") {
       this.buffer.clear();
       this.display.render("0");
@@ -129,7 +122,7 @@ export class Calculator {
       return;
     }
 
-    // 2. 連続計算
+    // 2. 連続計算（左から順評価）
     if (this.state === CalcState.InputtingSecond && this.left !== null && this.operator !== null) {
       const right = this.buffer.toNumber();
       try {
@@ -169,42 +162,33 @@ export class Calculator {
   public handleEqual(): void {
     if (this.state === CalcState.Error) return;
 
+    // ★ 設計書通り：left, operator, buffer（2項目目）が揃っている場合のみ評価
     if (this.state === CalcState.InputtingSecond && this.left !== null && this.operator !== null) {
-      this.executeCalculation(this.left, this.operator, this.buffer.toNumber());
+      try {
+        const a = this.left;
+        const op = this.operator;
+        const b = this.buffer.toNumber();
+
+        const result = this.evaluator.compute(a, op, b);
+        const resStr = this.formatter.formatForDisplay(result);
+
+        this.left = result;
+        this.operator = null;
+        this.buffer.clear();
+        this.display.render(resStr);
+        this.state = CalcState.ResultShown;
+
+        const formulaOnly = `${a} ${op} ${b} =`;
+        const fullExpression = `${formulaOnly} ${resStr}`;
+        this.updateFormula(formulaOnly);
+        this.onCalculate?.(fullExpression, formulaOnly);
+      } catch {
+        this.toError(Config.ERROR_MESSAGE);
+      }
       return;
     }
 
-    if (this.state === CalcState.OperatorEntered && this.left !== null && this.operator !== null) {
-      this.executeCalculation(this.left, this.operator, this.left);
-      return;
-    }
-
-    if (this.state === CalcState.ResultShown && this.left !== null && this.lastOperator !== null && this.lastOperand !== null) {
-      this.executeCalculation(this.left, this.lastOperator, this.lastOperand);
-      return;
-    }
-  }
-
-  private executeCalculation(a: number, op: Operation, b: number): void {
-    try {
-      const result = this.evaluator.compute(a, op, b);
-      const resStr = this.formatter.formatForDisplay(result);
-
-      this.left = result;
-      this.lastOperator = op;
-      this.lastOperand = b;
-      this.operator = null;
-      this.buffer.clear();
-      this.display.render(resStr);
-      this.state = CalcState.ResultShown;
-
-      const formulaOnly = `${a} ${op} ${b} =`;
-      const fullExpression = `${formulaOnly} ${resStr}`;
-      this.updateFormula(formulaOnly);
-      this.onCalculate?.(fullExpression, formulaOnly);
-    } catch {
-      this.toError(Config.ERROR_MESSAGE);
-    }
+    // ★ 揃っていない場合（初期状態、演算子直後、計算結果表示後）は現表示維持（何もしない）
   }
 
   public handleClear(): void {
@@ -217,13 +201,12 @@ export class Calculator {
     this.handleClear();
   }
 
-public handleBackspace(): void {
+  public handleBackspace(): void {
     if (this.state === CalcState.ResultShown || this.state === CalcState.Error) {
       return;
     }
     this.buffer.backspace();
 
-    // ★ バッファが空（または負符号が消えた）なら、計算式エリアもクリアして「0」にする
     if (this.buffer.isEmpty() || this.buffer.getValue() === "") {
       this.buffer.clear();
       this.display.render("0");
@@ -236,16 +219,10 @@ public handleBackspace(): void {
 
   public handleSqrt(): void {
     if (this.state === CalcState.Error) return;
-
-    // ★ No.29対応：演算子入力直後（例:「4」「-」）は無視する
     if (this.state === CalcState.OperatorEntered) return;
 
     const currentVal = !this.buffer.isEmpty() ? this.buffer.toNumber() : this.left ?? 0;
-
-    // ★ No.29対応：負の数の平方根は「反応しない（無視）」
-    if (currentVal < 0) {
-      return;
-    }
+    if (currentVal < 0) return;
 
     const result = Math.sqrt(currentVal);
     const resStr = this.formatter.formatForDisplay(result);
@@ -280,21 +257,15 @@ public handleBackspace(): void {
   private resetState(): void {
     this.left = null;
     this.operator = null;
-    this.lastOperator = null;
-    this.lastOperand = null;
     this.buffer.clear();
     this.state = CalcState.Ready;
   }
 
-private toError(message: string): void {
-    // resetState() を呼ばず、エラー状態（CalcState.Error）をしっかり維持する
+  private toError(message: string): void {
     this.left = null;
     this.operator = null;
-    this.lastOperator = null;
-    this.lastOperand = null;
     this.buffer.clear();
-    this.state = CalcState.Error; // ★ ここで確実に Error 状態になる
-
+    this.state = CalcState.Error;
     this.updateFormula("");
     this.display.renderError(message);
   }

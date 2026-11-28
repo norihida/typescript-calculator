@@ -18,7 +18,7 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
   });
 
   // -------------------------------------------------------------
-  // 1. ★ 状態遷移（CalcState）の完全網羅テスト
+  // 1. 状態遷移（CalcState）の網羅テスト
   // -------------------------------------------------------------
   describe("状態遷移（CalcState）の網羅テスト", () => {
     it("初期状態は Ready であること", () => {
@@ -39,7 +39,7 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
     it("★ 2つ目の数値を入力すると InputtingSecond に遷移すること", () => {
       calculator.handleDigit(1);
       calculator.handleOperator(Operation.Add);
-      calculator.handleDigit(2); // 2項目目を入力
+      calculator.handleDigit(2);
       expect(calculator.getState()).toBe(CalcState.InputtingSecond);
     });
 
@@ -47,20 +47,13 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handleDigit(1);
       calculator.handleOperator(Operation.Add);
       calculator.handleDigit(2);
-      calculator.handleEqual(); // 計算実行
-      expect(calculator.getState()).toBe(CalcState.ResultShown);
-    });
-
-    it("★ 同値計算：演算子の直後に等号を押した場合も ResultShown に遷移すること", () => {
-      calculator.handleDigit(5);
-      calculator.handleOperator(Operation.Add);
-      calculator.handleEqual(); // 5 + 5 = 10
+      calculator.handleEqual();
       expect(calculator.getState()).toBe(CalcState.ResultShown);
     });
 
     it("★ 平方根（√）を計算した直後も ResultShown に遷移すること", () => {
       calculator.handleDigit(9);
-      calculator.handleSqrt(); // √9 = 3
+      calculator.handleSqrt();
       expect(calculator.getState()).toBe(CalcState.ResultShown);
     });
 
@@ -89,10 +82,29 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       expect(mockDisplay.render).toHaveBeenLastCalledWith("8");
     });
 
-    it("初期状態で等号（=）を押しても状態・表示が変わらないこと", () => {
+    it("初期状態で等号（=）を押しても状態・表示が変わらないこと（現表示維持）", () => {
       calculator.handleEqual();
       expect(calculator.getState()).toBe(CalcState.Ready);
       expect(mockDisplay.render).not.toHaveBeenCalled();
+    });
+
+    it("演算子の直後に等号（=）を押しても計算されず状態を維持すること (5 + =)", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleEqual(); // 2項目目がないので何もしない
+      expect(calculator.getState()).toBe(CalcState.OperatorEntered);
+    });
+
+    it("計算完了後に等号（=）を連打しても再計算されず現表示を維持すること (5 + 3 = 8 の後)", () => {
+      calculator.handleDigit(5);
+      calculator.handleOperator(Operation.Add);
+      calculator.handleDigit(3);
+      calculator.handleEqual(); // 結果: 8
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("8");
+
+      calculator.handleEqual(); // 連打：何もしない
+      expect(calculator.getState()).toBe(CalcState.ResultShown);
+      expect(mockDisplay.render).toHaveBeenLastCalledWith("8");
     });
 
     it("初期状態で演算子（+）を押すと「0 +」として処理されること", () => {
@@ -126,9 +138,9 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handleDigit(2);
       calculator.handleOperator(Operation.Add);
       calculator.handleDigit(3);
-      calculator.handleEqual(); // 結果: 5
+      calculator.handleEqual();
 
-      calculator.handleDigit(9); // 新規開始
+      calculator.handleDigit(9);
       expect(calculator.getState()).toBe(CalcState.InputtingFirst);
       expect(mockDisplay.render).toHaveBeenLastCalledWith("9");
     });
@@ -137,23 +149,13 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handleDigit(2);
       calculator.handleOperator(Operation.Add);
       calculator.handleDigit(3);
-      calculator.handleEqual(); // 結果: 5
+      calculator.handleEqual();
 
       calculator.handleOperator(Operation.Multiply);
       calculator.handleDigit(4);
       calculator.handleEqual();
 
       expect(mockDisplay.render).toHaveBeenLastCalledWith("20");
-    });
-
-    it("同じ演算子で連続イコールを押すとリピート計算されること (5 + = 10, = 15)", () => {
-      calculator.handleDigit(5);
-      calculator.handleOperator(Operation.Add);
-      calculator.handleEqual(); // 10
-      expect(mockDisplay.render).toHaveBeenLastCalledWith("10");
-
-      calculator.handleEqual(); // 15
-      expect(mockDisplay.render).toHaveBeenLastCalledWith("15");
     });
   });
 
@@ -165,9 +167,9 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handleDigit(5);
       calculator.handleOperator(Operation.Add);
       calculator.handleDigit(4);
-      calculator.handleEqual(); // 結果: 9
+      calculator.handleEqual();
 
-      calculator.handleSqrt(); // √9 = 3
+      calculator.handleSqrt();
       expect(mockDisplay.render).toHaveBeenLastCalledWith("3");
     });
 
@@ -175,9 +177,9 @@ describe("Calculator（アプリケーション制御クラス）の単体テス
       calculator.handleDigit(10);
       calculator.handleOperator(Operation.Add);
       calculator.handleDigit(10);
-      calculator.handleEqual(); // 結果: 20
+      calculator.handleEqual();
 
-      calculator.handlePercent(); // 20% = 0.2
+      calculator.handlePercent();
       expect(mockDisplay.render).toHaveBeenLastCalledWith("0.2");
     });
   });
