@@ -237,7 +237,7 @@ export class Calculator {
     this.display.render(resStr);
   }
 
-    public handlePercent(): void {
+  public handlePercent(): void {
     if (this.state === CalcState.Error) return;
     if (this.state === CalcState.OperatorEntered) return;
 
