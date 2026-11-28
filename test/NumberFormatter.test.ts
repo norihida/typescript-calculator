@@ -49,7 +49,7 @@ describe("NumberFormatter（数値表示整形クラス）の単体テスト", (
       expect(formatter.formatForDisplay(0.000001)).toBe("0.000001");
     });
 
-    it("0.0000001 (1e-7) は極小値として指数表記「1e-7」になること", () => {
+    it("計算結果が0.0000001の場合、数値の文字列化により「1e-7」と表示されること", () => {
       expect(formatter.formatForDisplay(0.0000001)).toBe("1e-7");
     });
   });
