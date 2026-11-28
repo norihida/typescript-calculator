@@ -96,6 +96,26 @@ describe("InputBuffer（入力バッファ管理クラス）の単体テスト",
       buffer.pushDigit(9); // 9個目は無視
       expect(buffer.getValue()).toBe("-12345678");
     });
+
+    it("負の符号「-」と小数点「.」の両方を含んでも数字8桁まで入力でき、9桁目は無視されること", () => {
+      buffer.pushMinus();
+      buffer.pushDigit(1);
+      buffer.pushDigit(2);
+      buffer.pushDigit(3);
+      buffer.pushDecimal();
+      buffer.pushDigit(4);
+      buffer.pushDigit(5);
+      buffer.pushDigit(6);
+      buffer.pushDigit(7);
+      buffer.pushDigit(8); // 数字8個: -123.45678
+
+      expect(buffer.digitCount()).toBe(8);
+      expect(buffer.getValue()).toBe("-123.45678");
+
+      buffer.pushDigit(9); // 9個目は無視される
+      expect(buffer.digitCount()).toBe(8);
+      expect(buffer.getValue()).toBe("-123.45678");
+    });
   });
 
   describe("バックスペース（削除）制御", () => {
